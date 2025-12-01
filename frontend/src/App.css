@@ -125,8 +125,31 @@
   margin-bottom: 0.5rem;
 }
 
+.section-header.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header.clickable:hover h3 {
+  color: #aaa;
+}
+
 .section-header h3 {
   margin: 0;
+}
+
+.collapse-icon {
+  color: #666;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.sidebar-section.collapsible .section-header {
+  margin-bottom: 0;
+}
+
+.sidebar-section.collapsible .button-column {
+  margin-top: 0.5rem;
 }
 
 .icon-button {

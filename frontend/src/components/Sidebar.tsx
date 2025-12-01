@@ -6,6 +6,7 @@ import {
   readFileAsImage,
   sliceImageIntoTiles,
   suggestTileSizes,
+  deduplicateTiles,
   saveProject,
   loadProject,
   downloadTilesetPNG,
@@ -36,6 +37,11 @@ export function Sidebar() {
   const [sceneName, setSceneName] = useState('');
   const [gridWidth, setGridWidth] = useState(16);
   const [gridHeight, setGridHeight] = useState(16);
+  const [sceneTileSize, setSceneTileSize] = useState(16);
+
+  // Collapsible sections
+  const [importExpanded, setImportExpanded] = useState(false);
+  const [exportExpanded, setExportExpanded] = useState(false);
 
   // Import dialog state
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -45,7 +51,7 @@ export function Sidebar() {
 
   const handleCreateScene = () => {
     if (sceneName.trim()) {
-      createScene(sceneName.trim(), gridWidth, gridHeight);
+      createScene(sceneName.trim(), gridWidth, gridHeight, sceneTileSize);
       setSceneName('');
       setShowNewScene(false);
     }
@@ -77,9 +83,17 @@ export function Sidebar() {
       tileHeight: importTileSize,
     });
 
-    addTiles(result.tiles);
+    // Deduplicate tiles before adding
+    const existingTiles = project?.tiles ?? [];
+    const { uniqueTiles, duplicateCount } = deduplicateTiles(result.tiles, existingTiles);
+
+    addTiles(uniqueTiles);
     setShowImportDialog(false);
     setImportImage(null);
+
+    if (duplicateCount > 0) {
+      console.log(`Skipped ${duplicateCount} duplicate tiles`);
+    }
   };
 
   // Import Tiled JSON
@@ -99,7 +113,9 @@ export function Sidebar() {
       });
 
       if (result.tiles.length > 0) {
-        addTiles(result.tiles);
+        const existingTiles = project?.tiles ?? [];
+        const { uniqueTiles } = deduplicateTiles(result.tiles, existingTiles);
+        addTiles(uniqueTiles);
       }
       if (result.scenes.length > 0) {
         importScenes(result.scenes);
@@ -124,7 +140,9 @@ export function Sidebar() {
       });
 
       if (result.tiles.length > 0) {
-        addTiles(result.tiles);
+        const existingTiles = project?.tiles ?? [];
+        const { uniqueTiles } = deduplicateTiles(result.tiles, existingTiles);
+        addTiles(uniqueTiles);
       }
       if (result.scenes.length > 0) {
         importScenes(result.scenes);
@@ -230,7 +248,7 @@ export function Sidebar() {
               </label>
             </div>
             <p className="import-info">
-              Will create ~{Math.floor(importImage.width / importTileSize) * Math.floor(importImage.height / importTileSize)} tiles
+              Will create ~{Math.floor(importImage.width / importTileSize) * Math.floor(importImage.height / importTileSize)} tiles (duplicates auto-removed)
             </p>
             <div className="modal-buttons">
               <button onClick={() => setShowImportDialog(false)}>Cancel</button>
@@ -264,31 +282,41 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="sidebar-section">
-        <h3>Import</h3>
-        <div className="button-column">
-          <button onClick={handleImportPNG}>PNG Tileset</button>
-          <button onClick={handleImportTiled}>Tiled JSON</button>
-          <button onClick={handleImportLDtk}>LDtk</button>
+      <div className="sidebar-section collapsible">
+        <div className="section-header clickable" onClick={() => setImportExpanded(!importExpanded)}>
+          <h3>Import</h3>
+          <span className="collapse-icon">{importExpanded ? '−' : '+'}</span>
         </div>
+        {importExpanded && (
+          <div className="button-column">
+            <button onClick={handleImportPNG}>PNG Tileset</button>
+            <button onClick={handleImportTiled}>Tiled JSON</button>
+            <button onClick={handleImportLDtk}>LDtk</button>
+          </div>
+        )}
       </div>
 
-      <div className="sidebar-section">
-        <h3>Export</h3>
-        <div className="button-column">
-          <button onClick={handleExportTilesetPNG} disabled={!project || project.tiles.length === 0}>
-            Tileset PNG
-          </button>
-          <button onClick={handleExportScenePNG} disabled={!scene}>
-            Scene PNG
-          </button>
-          <button onClick={handleExportTiled} disabled={!scene}>
-            Tiled JSON
-          </button>
-          <button onClick={handleExportLDtk} disabled={!scene}>
-            LDtk
-          </button>
+      <div className="sidebar-section collapsible">
+        <div className="section-header clickable" onClick={() => setExportExpanded(!exportExpanded)}>
+          <h3>Export</h3>
+          <span className="collapse-icon">{exportExpanded ? '−' : '+'}</span>
         </div>
+        {exportExpanded && (
+          <div className="button-column">
+            <button onClick={handleExportTilesetPNG} disabled={!project || project.tiles.length === 0}>
+              Tileset PNG
+            </button>
+            <button onClick={handleExportScenePNG} disabled={!scene}>
+              Scene PNG
+            </button>
+            <button onClick={handleExportTiled} disabled={!scene}>
+              Tiled JSON
+            </button>
+            <button onClick={handleExportLDtk} disabled={!scene}>
+              LDtk
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="sidebar-section">
@@ -313,7 +341,7 @@ export function Sidebar() {
             />
             <div className="form-row">
               <label>
-                Width:
+                W:
                 <input
                   type="number"
                   value={gridWidth}
@@ -323,7 +351,7 @@ export function Sidebar() {
                 />
               </label>
               <label>
-                Height:
+                H:
                 <input
                   type="number"
                   value={gridHeight}
@@ -332,21 +360,35 @@ export function Sidebar() {
                   max={256}
                 />
               </label>
+              <label>
+                Tile:
+                <select
+                  value={sceneTileSize}
+                  onChange={e => setSceneTileSize(parseInt(e.target.value))}
+                >
+                  <option value={8}>8</option>
+                  <option value={16}>16</option>
+                  <option value={24}>24</option>
+                  <option value={32}>32</option>
+                  <option value={48}>48</option>
+                  <option value={64}>64</option>
+                </select>
+              </label>
             </div>
             <button onClick={handleCreateScene}>Create</button>
           </div>
         )}
 
         <div className="scene-list">
-          {project?.scenes.map(scene => (
+          {project?.scenes.map(s => (
             <div
-              key={scene.id}
-              className={`scene-item ${scene.id === project.activeSceneId ? 'active' : ''}`}
-              onClick={() => setActiveScene(scene.id)}
+              key={s.id}
+              className={`scene-item ${s.id === project.activeSceneId ? 'active' : ''}`}
+              onClick={() => setActiveScene(s.id)}
             >
-              <span className="scene-name">{scene.name}</span>
+              <span className="scene-name">{s.name}</span>
               <span className="scene-size">
-                {scene.gridWidth}x{scene.gridHeight}
+                {s.gridWidth}x{s.gridHeight} @{s.tileSize}px
               </span>
             </div>
           ))}
