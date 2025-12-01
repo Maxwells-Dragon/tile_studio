@@ -5,7 +5,11 @@
       "Bash(npm create:*)",
       "Bash(npm install)",
       "Bash(npm install:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial project structure for Tile Studio\n\nSet up monorepo with React frontend and Python backend:\n- Frontend: React + TypeScript + Vite with Zustand for state\n- Backend: FastAPI with inpainting pipeline structure\n- Core types, components, and API endpoints scaffolded\n- Architecture documentation included\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

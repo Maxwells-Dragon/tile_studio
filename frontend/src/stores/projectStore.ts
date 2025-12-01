@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Project, Scene, Tile, TilePlacement, Edge, Selection, Viewport, ToolMode } from '../types';
+import type { Project, Scene, Tile, TilePlacement, Selection, Viewport, ToolMode } from '../types';
 
 interface ProjectState {
   // Project data
@@ -9,6 +9,7 @@ interface ProjectState {
   selection: Selection;
   viewport: Viewport;
   toolMode: ToolMode;
+  selectedTileId: string | null; // Tile selected in library for placement
 
   // Actions - Project
   createProject: (name: string, defaultTileSize?: number) => void;
@@ -21,8 +22,10 @@ interface ProjectState {
 
   // Actions - Tiles
   addTile: (tile: Tile) => void;
+  addTiles: (tiles: Tile[]) => void;
   removeTile: (tileId: string) => void;
   updateTileLabels: (tileId: string, labels: string[]) => void;
+  setSelectedTileId: (tileId: string | null) => void;
 
   // Actions - Placements
   placeTile: (tileId: string, gridX: number, gridY: number) => void;
@@ -53,6 +56,9 @@ interface ProjectState {
   // Actions - Keywords
   addKeyword: (keyword: string) => void;
   removeKeyword: (keyword: string) => void;
+
+  // Actions - Import scenes from other formats
+  importScenes: (scenes: Scene[]) => void;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -73,6 +79,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   toolMode: 'select',
+  selectedTileId: null,
 
   createProject: (name, defaultTileSize = 16) => {
     const project: Project = {
@@ -143,6 +150,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     });
   },
 
+  addTiles: (tiles) => {
+    const { project } = get();
+    if (!project) return;
+
+    set({
+      project: {
+        ...project,
+        tiles: [...project.tiles, ...tiles],
+      },
+    });
+  },
+
   removeTile: (tileId) => {
     const { project } = get();
     if (!project) return;
@@ -171,6 +190,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ),
       },
     });
+  },
+
+  setSelectedTileId: (tileId) => {
+    set({ selectedTileId: tileId });
   },
 
   placeTile: (tileId, gridX, gridY) => {
@@ -307,7 +330,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   selectArea: (minX, minY, maxX, maxY) => {
-    const { project, selection } = get();
+    const { selection } = get();
     const scene = get().getActiveScene();
     if (!scene) return;
 
@@ -443,6 +466,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...project,
         keywords: project.keywords.filter(k => k !== keyword),
+      },
+    });
+  },
+
+  importScenes: (scenes) => {
+    const { project } = get();
+    if (!project) return;
+
+    set({
+      project: {
+        ...project,
+        scenes: [...project.scenes, ...scenes],
+        activeSceneId: scenes.length > 0 ? scenes[0].id : project.activeSceneId,
       },
     });
   },
