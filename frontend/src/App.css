@@ -526,3 +526,47 @@ canvas {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Context Menu */
+.context-menu {
+  background: #1a1a2e;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  padding: 0.25rem;
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 100px;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu button:hover {
+  background: #2a2a4e;
+  color: #fff;
+}
+
+.context-menu button.danger:hover {
+  background: #4a2a2e;
+  color: #ff6666;
+}
+
+/* Clickable project name */
+.project-name.clickable {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.project-name.clickable:hover {
+  color: #8888ff;
+}
