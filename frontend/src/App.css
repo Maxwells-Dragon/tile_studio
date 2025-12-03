@@ -570,3 +570,437 @@ canvas {
 .project-name.clickable:hover {
   color: #8888ff;
 }
+
+/* Menu Bar */
+.menu-bar {
+  display: flex;
+  background: #1a1a2e;
+  border-bottom: 1px solid #2a2a4e;
+  padding: 0 0.25rem;
+}
+
+.menu {
+  position: relative;
+}
+
+.menu-trigger {
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: none;
+  color: #ccc;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.menu-trigger:hover,
+.menu-trigger.active {
+  background: #2a2a4e;
+  color: #fff;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 200px;
+  background: #1a1a2e;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  padding: 0.25rem;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.menu-item:hover:not(.disabled) {
+  background: #2a2a4e;
+  color: #fff;
+}
+
+.menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menu-item-icon {
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+}
+
+.menu-item:hover:not(.disabled) .menu-item-icon {
+  color: #aaa;
+}
+
+.menu-item-label {
+  flex: 1;
+}
+
+.menu-item-shortcut {
+  color: #666;
+  font-size: 0.7rem;
+  margin-left: auto;
+}
+
+.menu-separator {
+  height: 1px;
+  background: #3a3a5e;
+  margin: 0.25rem 0.5rem;
+}
+
+.submenu-arrow {
+  transform: rotate(-90deg);
+  color: #666;
+}
+
+/* Icon Toolbar */
+.icon-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  background: #16162a;
+  border-bottom: 1px solid #2a2a4e;
+}
+
+.toolbar-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toolbar-icon-button:hover:not(.disabled) {
+  background: #2a2a4e;
+  border-color: #3a3a5e;
+  color: #fff;
+}
+
+.toolbar-icon-button.active {
+  background: #3a3a5e;
+  border-color: #4a4a7e;
+  color: #fff;
+}
+
+.toolbar-icon-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: #3a3a5e;
+  margin: 0 0.35rem;
+}
+
+/* Form elements for modals */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"] {
+  padding: 0.5rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #5a5a8e;
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-hint {
+  font-size: 0.7rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+/* Export/Import options */
+.export-options,
+.import-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.radio-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.radio-option:hover {
+  border-color: #5a5a8e;
+}
+
+.radio-option input[type="radio"] {
+  accent-color: #5a5a8e;
+}
+
+.radio-option span:first-of-type {
+  font-weight: 500;
+  color: #fff;
+}
+
+.option-desc {
+  width: 100%;
+  font-size: 0.75rem;
+  color: #888;
+  margin-left: 1.5rem;
+}
+
+.import-option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.import-option-btn:hover {
+  background: #1a1a2e;
+  border-color: #5a5a8e;
+}
+
+.import-option-btn .option-desc {
+  margin-left: 0;
+}
+
+/* Import Tileset Modal */
+.import-tileset-modal {
+  min-width: 400px;
+}
+
+.import-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 2px dashed #3a3a5e;
+  border-radius: 8px;
+  background: #0f0f1a;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 1rem 0;
+}
+
+.import-drop-zone:hover,
+.import-drop-zone.drag-over {
+  border-color: #5a5a8e;
+  background: #1a1a2e;
+}
+
+.import-drop-zone.has-file {
+  cursor: default;
+}
+
+.drop-zone-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #888;
+  text-align: center;
+  padding: 1rem;
+}
+
+.drop-zone-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.drop-zone-hint {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.import-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem;
+}
+
+.import-preview {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  image-rendering: pixelated;
+}
+
+.import-grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.change-file-btn {
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  background: #2a2a4e;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.change-file-btn:hover {
+  background: #3a3a5e;
+  color: #fff;
+}
+
+.import-tileset-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.import-tileset-options .form-group {
+  margin-bottom: 0;
+}
+
+.import-tileset-options select {
+  padding: 0.4rem 0.5rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.import-tileset-options select:focus {
+  outline: none;
+  border-color: #5a5a8e;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+.checkbox-option:hover {
+  border-color: #5a5a8e;
+}
+
+.checkbox-option input[type="checkbox"] {
+  accent-color: #5a5a8e;
+}
+
+/* Filename input with extension */
+.filename-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.filename-input-row input[type="text"] {
+  flex: 1;
+  padding: 0.5rem;
+  background: #0f0f1a;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px 0 0 4px;
+  color: #fff;
+  font-size: 0.85rem;
+}
+
+.filename-input-row input[type="text"]:focus {
+  outline: none;
+  border-color: #5a5a8e;
+}
+
+.filename-ext {
+  padding: 0.5rem 0.75rem;
+  background: #2a2a4e;
+  border: 1px solid #3a3a5e;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* Form value display (read-only) */
+.form-value {
+  padding: 0.5rem;
+  background: #2a2a4e;
+  border: 1px solid #3a3a5e;
+  border-radius: 4px;
+  color: #ccc;
+  font-size: 0.85rem;
+}

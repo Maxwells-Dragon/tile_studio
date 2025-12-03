@@ -72,9 +72,10 @@ export async function exportTilesetPNG(
 export async function exportScenePNG(
   scene: Scene,
   tiles: Tile[],
+  tileSize: number,
   options: { backgroundColor?: string } = {}
 ): Promise<Blob> {
-  const { tileSize, gridWidth, gridHeight, placements } = scene;
+  const { gridWidth, gridHeight, placements } = scene;
   const { backgroundColor } = options;
 
   const canvas = document.createElement('canvas');
@@ -122,10 +123,11 @@ export async function downloadTilesetPNG(
 export async function downloadScenePNG(
   scene: Scene,
   tiles: Tile[],
+  tileSize: number,
   filename = 'scene.png',
   options: { backgroundColor?: string } = {}
 ): Promise<void> {
-  const blob = await exportScenePNG(scene, tiles, options);
+  const blob = await exportScenePNG(scene, tiles, tileSize, options);
   downloadBlob(blob, filename);
 }
 

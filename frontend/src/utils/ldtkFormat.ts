@@ -196,8 +196,8 @@ export function exportLDtk(
   scene: Scene,
   tilesetImagePath = 'tileset.png'
 ): LDtkProject {
-  const { tiles } = project;
-  const { gridWidth, gridHeight, tileSize, placements, name } = scene;
+  const { tiles, tileSize } = project;
+  const { gridWidth, gridHeight, placements, name } = scene;
 
   // Calculate tileset dimensions
   const columns = Math.ceil(Math.sqrt(tiles.length));

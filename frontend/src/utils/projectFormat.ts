@@ -18,7 +18,9 @@ export interface SerializedProject {
     scenes: SerializedScene[];
     activeSceneId: string | null;
     keywords: string[];
-    defaultTileSize: number;
+    /** @deprecated Use tileSize instead */
+    defaultTileSize?: number;
+    tileSize: number;
   };
 }
 
@@ -35,7 +37,8 @@ export interface SerializedScene {
   name: string;
   gridWidth: number;
   gridHeight: number;
-  tileSize: number;
+  /** @deprecated Tile size is now at project level */
+  tileSize?: number;
   placements: TilePlacement[];
   edges: Edge[];
   transparentColor: string;
@@ -58,7 +61,6 @@ export function serializeProject(project: Project): SerializedProject {
     name: scene.name,
     gridWidth: scene.gridWidth,
     gridHeight: scene.gridHeight,
-    tileSize: scene.tileSize,
     placements: scene.placements,
     edges: scene.edges,
     transparentColor: scene.transparentColor,
@@ -73,7 +75,7 @@ export function serializeProject(project: Project): SerializedProject {
       scenes: serializedScenes,
       activeSceneId: project.activeSceneId,
       keywords: project.keywords,
-      defaultTileSize: project.defaultTileSize,
+      tileSize: project.tileSize,
     },
   };
 }
@@ -111,11 +113,13 @@ export async function deserializeProject(data: SerializedProject): Promise<Proje
     name: serialized.name,
     gridWidth: serialized.gridWidth,
     gridHeight: serialized.gridHeight,
-    tileSize: serialized.tileSize,
     placements: serialized.placements,
     edges: serialized.edges,
     transparentColor: serialized.transparentColor,
   }));
+
+  // Support both old (defaultTileSize) and new (tileSize) format
+  const tileSize = data.project.tileSize ?? data.project.defaultTileSize ?? 16;
 
   return {
     id: data.project.id,
@@ -124,7 +128,7 @@ export async function deserializeProject(data: SerializedProject): Promise<Proje
     scenes,
     activeSceneId: data.project.activeSceneId,
     keywords: data.project.keywords,
-    defaultTileSize: data.project.defaultTileSize,
+    tileSize,
   };
 }
 

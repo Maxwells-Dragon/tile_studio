@@ -2,7 +2,11 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import { useProjectStore } from '../stores/projectStore';
 
 interface CanvasProps {
-  // Props no longer needed - canvas auto-sizes to container
+  onViewportActions?: (actions: {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    resetView: () => void;
+  }) => void;
 }
 
 // Drag state types
@@ -22,10 +26,10 @@ interface DragState {
   ctrlKey?: boolean;
 }
 
-// Cache for converting ImageData to drawable ImageBitmap
+// Cache for converting ImageData/base64 to drawable ImageBitmap
 const imageBitmapCache = new Map<string, ImageBitmap>();
 
-async function getImageBitmap(tileId: string, imageData: ImageData): Promise<ImageBitmap> {
+async function getImageBitmapFromImageData(tileId: string, imageData: ImageData): Promise<ImageBitmap> {
   const cached = imageBitmapCache.get(tileId);
   if (cached) return cached;
 
@@ -34,12 +38,32 @@ async function getImageBitmap(tileId: string, imageData: ImageData): Promise<Ima
   return bitmap;
 }
 
+async function getImageBitmapFromBase64(tileId: string, base64: string): Promise<ImageBitmap> {
+  const cached = imageBitmapCache.get(tileId);
+  if (cached) return cached;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const bitmap = await createImageBitmap(img);
+        imageBitmapCache.set(tileId, bitmap);
+        resolve(bitmap);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = reject;
+    img.src = base64;
+  });
+}
+
 // Clear cache when tiles change
 export function clearImageBitmapCache() {
   imageBitmapCache.clear();
 }
 
-export function Canvas(_props: CanvasProps) {
+export function Canvas({ onViewportActions }: CanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { project, viewport, selection, toolMode, selectedTileId, uncommittedMove, needsViewportReset } = useProjectStore();
@@ -83,9 +107,16 @@ export function Canvas(_props: CanvasProps) {
     const loadBitmaps = async () => {
       const newBitmaps = new Map<string, ImageBitmap>();
       for (const tile of project.tiles) {
-        if (tile.imageData) {
-          const bitmap = await getImageBitmap(tile.id, tile.imageData);
-          newBitmaps.set(tile.id, bitmap);
+        try {
+          if (tile.imageData) {
+            const bitmap = await getImageBitmapFromImageData(tile.id, tile.imageData);
+            newBitmaps.set(tile.id, bitmap);
+          } else if (tile.imageBase64) {
+            const bitmap = await getImageBitmapFromBase64(tile.id, tile.imageBase64);
+            newBitmaps.set(tile.id, bitmap);
+          }
+        } catch (e) {
+          console.error(`Failed to load bitmap for tile ${tile.id}:`, e);
         }
       }
       setTileBitmaps(newBitmaps);
@@ -138,8 +169,9 @@ export function Canvas(_props: CanvasProps) {
       const worldX = (canvasX - viewport.offsetX) / viewport.zoom;
       const worldY = (canvasY - viewport.offsetY) / viewport.zoom;
 
-      const gridX = Math.floor(worldX / scene.tileSize);
-      const gridY = Math.floor(worldY / scene.tileSize);
+      const tileSize = scene.tileSize ?? project?.tileSize ?? 16;
+      const gridX = Math.floor(worldX / tileSize);
+      const gridY = Math.floor(worldY / tileSize);
 
       // Check bounds
       if (gridX < 0 || gridX >= scene.gridWidth || gridY < 0 || gridY >= scene.gridHeight) {
@@ -148,7 +180,7 @@ export function Canvas(_props: CanvasProps) {
 
       return { gridX, gridY };
     },
-    [scene, viewport]
+    [scene, viewport, project?.tileSize]
   );
 
   // Convert screen coordinates to grid coordinates (unbounded - can return negative or beyond grid)
@@ -167,12 +199,13 @@ export function Canvas(_props: CanvasProps) {
       const worldX = (canvasX - viewport.offsetX) / viewport.zoom;
       const worldY = (canvasY - viewport.offsetY) / viewport.zoom;
 
-      const gridX = Math.floor(worldX / scene.tileSize);
-      const gridY = Math.floor(worldY / scene.tileSize);
+      const tileSize = scene.tileSize ?? project?.tileSize ?? 16;
+      const gridX = Math.floor(worldX / tileSize);
+      const gridY = Math.floor(worldY / tileSize);
 
       return { gridX, gridY };
     },
-    [scene, viewport]
+    [scene, viewport, project?.tileSize]
   );
 
   const draw = useCallback(() => {
@@ -202,7 +235,8 @@ export function Canvas(_props: CanvasProps) {
     ctx.translate(viewport.offsetX, viewport.offsetY);
     ctx.scale(viewport.zoom, viewport.zoom);
 
-    const { tileSize, gridWidth, gridHeight } = scene;
+    const tileSize = scene.tileSize ?? project?.tileSize ?? 16;
+    const { gridWidth, gridHeight } = scene;
 
     // Draw grid background
     ctx.fillStyle = '#2a2a3e';
@@ -413,7 +447,8 @@ export function Canvas(_props: CanvasProps) {
   const calculateDefaultViewport = useCallback(() => {
     if (!scene) return null;
 
-    const { gridWidth, gridHeight, tileSize } = scene;
+    const tileSize = scene.tileSize ?? project?.tileSize ?? 16;
+    const { gridWidth, gridHeight } = scene;
     const gridPixelWidth = gridWidth * tileSize;
     const gridPixelHeight = gridHeight * tileSize;
 
@@ -430,7 +465,7 @@ export function Canvas(_props: CanvasProps) {
     const offsetY = (canvasSize.height - scaledGridHeight) / 2;
 
     return { zoom, offsetX, offsetY };
-  }, [scene, canvasSize]);
+  }, [scene, canvasSize, project?.tileSize]);
 
   // Handle viewport reset signal (when loading project or creating new scene)
   useEffect(() => {
@@ -443,6 +478,46 @@ export function Canvas(_props: CanvasProps) {
       clearNeedsViewportReset();
     }
   }, [needsViewportReset, calculateDefaultViewport]);
+
+  // Zoom in/out functions for toolbar/menu
+  const zoomIn = useCallback(() => {
+    const { setViewport, viewport } = useProjectStore.getState();
+    const newZoom = Math.min(viewport.zoom * 1.25, 20);
+    // Zoom toward center of canvas
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+    const scale = newZoom / viewport.zoom;
+    const newOffsetX = centerX - (centerX - viewport.offsetX) * scale;
+    const newOffsetY = centerY - (centerY - viewport.offsetY) * scale;
+    setViewport({ zoom: newZoom, offsetX: newOffsetX, offsetY: newOffsetY });
+  }, [canvasSize]);
+
+  const zoomOut = useCallback(() => {
+    const { setViewport, viewport } = useProjectStore.getState();
+    const newZoom = Math.max(viewport.zoom / 1.25, 0.1);
+    // Zoom toward center of canvas
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+    const scale = newZoom / viewport.zoom;
+    const newOffsetX = centerX - (centerX - viewport.offsetX) * scale;
+    const newOffsetY = centerY - (centerY - viewport.offsetY) * scale;
+    setViewport({ zoom: newZoom, offsetX: newOffsetX, offsetY: newOffsetY });
+  }, [canvasSize]);
+
+  const resetView = useCallback(() => {
+    const { setViewport } = useProjectStore.getState();
+    const defaultViewport = calculateDefaultViewport();
+    if (defaultViewport) {
+      setViewport(defaultViewport);
+    }
+  }, [calculateDefaultViewport]);
+
+  // Register viewport actions with parent
+  useEffect(() => {
+    if (onViewportActions) {
+      onViewportActions({ zoomIn, zoomOut, resetView });
+    }
+  }, [onViewportActions, zoomIn, zoomOut, resetView]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -504,8 +579,8 @@ export function Canvas(_props: CanvasProps) {
         deleteSelectedPlacements();
       }
 
-      // Home: reset viewport to default (centered, appropriate zoom)
-      if (e.key === 'Home') {
+      // Ctrl+Shift+0: reset viewport to default (centered, appropriate zoom)
+      if (e.key === '0' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
         e.preventDefault();
         const defaultViewport = calculateDefaultViewport();
         if (defaultViewport) {
@@ -542,11 +617,30 @@ export function Canvas(_props: CanvasProps) {
           setActiveScene(project.scenes[nextIndex].id);
         }
       }
+
+      // Ctrl+Shift+= or Ctrl+Shift++: zoom in
+      if ((e.key === '=' || e.key === '+') && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        e.preventDefault();
+        zoomIn();
+      }
+
+      // Ctrl+Shift+- : zoom out
+      if (e.key === '-' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        e.preventDefault();
+        zoomOut();
+      }
+
+      // Ctrl+Shift+D: duplicate selected placements
+      if (e.key === 'D' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        e.preventDefault();
+        const { duplicateSelectedPlacements } = useProjectStore.getState();
+        duplicateSelectedPlacements();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [calculateDefaultViewport]);
+  }, [calculateDefaultViewport, zoomIn, zoomOut]);
 
   // Global mouse event handlers for drag operations that continue outside canvas
   useEffect(() => {

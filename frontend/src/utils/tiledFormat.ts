@@ -214,8 +214,8 @@ export function exportTiledJSON(
   scene: Scene,
   tilesetImagePath = 'tileset.png'
 ): TiledMap {
-  const { tiles } = project;
-  const { gridWidth, gridHeight, tileSize, placements } = scene;
+  const { tiles, tileSize } = project;
+  const { gridWidth, gridHeight, placements } = scene;
 
   // Create tile ID to index mapping
   const tileIndexMap = new Map<string, number>();

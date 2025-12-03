@@ -50,8 +50,8 @@ interface ProjectState {
   renameProject: (name: string) => void;
 
   // Actions - Scene
-  createScene: (name: string, gridWidth: number, gridHeight: number, tileSize?: number) => void;
-  createSceneWithPlacements: (name: string, gridWidth: number, gridHeight: number, tileSize: number, placements: TilePlacement[]) => void;
+  createScene: (name: string, gridWidth: number, gridHeight: number) => void;
+  createSceneWithPlacements: (name: string, gridWidth: number, gridHeight: number, placements: TilePlacement[]) => void;
   setActiveScene: (sceneId: string) => void;
   getActiveScene: () => Scene | null;
   renameScene: (sceneId: string, name: string) => void;
@@ -69,6 +69,7 @@ interface ProjectState {
   removePlacement: (placementId: string) => void;
   removePlacements: (placementIds: string[]) => void;
   deleteSelectedPlacements: () => void;
+  duplicateSelectedPlacements: () => void;
   movePlacement: (placementId: string, gridX: number, gridY: number) => void;
   movePlacements: (placementIds: string[], dx: number, dy: number) => void;
   setPlacementLocked: (placementId: string, locked: boolean) => void;
@@ -148,7 +149,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   toolMode: 'select',
   selectedTileId: null,
 
-  createProject: (name, defaultTileSize = 16) => {
+  createProject: (name, tileSize = 16) => {
     const project: Project = {
       id: generateId(),
       name,
@@ -156,7 +157,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       scenes: [],
       activeSceneId: null,
       keywords: [],
-      defaultTileSize,
+      tileSize,
     };
     set({ project });
   },
@@ -176,7 +177,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ project: { ...project, name } });
   },
 
-  createScene: (name, gridWidth, gridHeight, tileSize) => {
+  createScene: (name, gridWidth, gridHeight) => {
     const { project } = get();
     if (!project) return;
 
@@ -185,7 +186,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name,
       gridWidth,
       gridHeight,
-      tileSize: tileSize ?? project.defaultTileSize,
       placements: [],
       edges: [],
       transparentColor: '#ff00ff',
@@ -202,7 +202,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     });
   },
 
-  createSceneWithPlacements: (name, gridWidth, gridHeight, tileSize, placements) => {
+  createSceneWithPlacements: (name, gridWidth, gridHeight, placements) => {
     const { project } = get();
     if (!project) return;
 
@@ -211,7 +211,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       name,
       gridWidth,
       gridHeight,
-      tileSize,
       placements,
       edges: [],
       transparentColor: '#ff00ff',
@@ -223,6 +222,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         scenes: [...project.scenes, scene],
         activeSceneId: scene.id,
       },
+      // New scene - signal Canvas to reset viewport to default
+      needsViewportReset: true,
     });
   },
 
@@ -474,6 +475,102 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         tileIds: new Set(),
       },
       uncommittedMove: null,
+      history: {
+        past: newPast,
+        future: [], // Clear redo stack
+      },
+    });
+  },
+
+  duplicateSelectedPlacements: () => {
+    const { project, selection, history, uncommittedMove } = get();
+    if (!project || !project.activeSceneId || selection.tileIds.size === 0) return;
+
+    // Commit any uncommitted move first
+    if (uncommittedMove) {
+      get().commitMove();
+    }
+
+    const scene = project.scenes.find(s => s.id === project.activeSceneId);
+    if (!scene) return;
+
+    // Push history before duplicating
+    const entry: HistoryEntry = {
+      sceneId: scene.id,
+      placements: scene.placements.map(p => ({ ...p })),
+      description: 'duplicate tiles',
+    };
+
+    const newPast = [...history.past, entry];
+    while (newPast.length > MAX_HISTORY_SIZE) {
+      newPast.shift();
+    }
+
+    // Get selected placements
+    const selectedPlacements = scene.placements.filter(p => selection.tileIds.has(p.id));
+    if (selectedPlacements.length === 0) return;
+
+    // Calculate bounding box of selection
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of selectedPlacements) {
+      minX = Math.min(minX, p.gridX);
+      minY = Math.min(minY, p.gridY);
+      maxX = Math.max(maxX, p.gridX);
+      maxY = Math.max(maxY, p.gridY);
+    }
+
+    // Offset for duplicates: try to place adjacent to selection (right side first, then below)
+    const selectionWidth = maxX - minX + 1;
+    const selectionHeight = maxY - minY + 1;
+
+    // Check if we can place to the right
+    let offsetX = selectionWidth;
+    let offsetY = 0;
+    if (maxX + selectionWidth >= scene.gridWidth) {
+      // Can't fit to the right, try below
+      offsetX = 0;
+      offsetY = selectionHeight;
+      if (maxY + selectionHeight >= scene.gridHeight) {
+        // Can't fit below either, just offset by 1 in both directions
+        offsetX = 1;
+        offsetY = 1;
+      }
+    }
+
+    // Create duplicated placements with new IDs and offset positions
+    const newPlacements: TilePlacement[] = selectedPlacements.map(p => ({
+      id: generateId(),
+      tileId: p.tileId,
+      gridX: p.gridX + offsetX,
+      gridY: p.gridY + offsetY,
+      locked: false,
+    }));
+
+    // Create new selection from duplicated tiles
+    const newSelectionIds = new Set(newPlacements.map(p => p.id));
+
+    // Track original positions for the new placements (empty map since these are new)
+    const originalPositions = new Map<string, { gridX: number; gridY: number }>();
+
+    set({
+      project: {
+        ...project,
+        scenes: project.scenes.map(s =>
+          s.id === project.activeSceneId
+            ? { ...s, placements: [...s.placements, ...newPlacements] }
+            : s
+        ),
+      },
+      selection: {
+        ...selection,
+        tileIds: newSelectionIds,
+      },
+      // Mark as uncommitted move so user can immediately drag them
+      uncommittedMove: {
+        placementIds: newSelectionIds,
+        replacedPlacements: [],
+        originalPositions,
+      },
       history: {
         past: newPast,
         future: [], // Clear redo stack
@@ -1053,63 +1150,112 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const scene = project.scenes.find(s => s.id === project.activeSceneId);
     if (!scene) return;
 
-    // If there's an uncommitted move, cancel it but allow redo
+    // If there's an uncommitted move, undo it but keep tiles selected and uncommitted
     if (uncommittedMove) {
-      // Save current state (with uncommitted changes) to future for redo
-      // Also save the uncommitted move state so redo can restore it
-      const currentEntry: HistoryEntry = {
-        sceneId: scene.id,
-        placements: scene.placements.map(p => ({ ...p })),
-        description: 'uncommitted move',
-        uncommittedMove: {
-          placementIds: new Set(uncommittedMove.placementIds),
-          replacedPlacements: uncommittedMove.replacedPlacements.map(p => ({ ...p })),
-          originalPositions: new Map(uncommittedMove.originalPositions),
-        },
-      };
+      // Check if this uncommitted move has actual moves (originalPositions not empty)
+      // vs being purely new placements (originalPositions empty)
+      const hasMoves = uncommittedMove.originalPositions.size > 0;
 
-      // Reconstruct the state before the uncommitted move
-      const previousPlacements: TilePlacement[] = [];
+      if (hasMoves) {
+        // This was a move operation - restore to original positions but keep uncommitted
+        // Save current state to future for redo
+        const currentEntry: HistoryEntry = {
+          sceneId: scene.id,
+          placements: scene.placements.map(p => ({ ...p })),
+          description: 'uncommitted move',
+          uncommittedMove: {
+            placementIds: new Set(uncommittedMove.placementIds),
+            replacedPlacements: uncommittedMove.replacedPlacements.map(p => ({ ...p })),
+            originalPositions: new Map(uncommittedMove.originalPositions),
+          },
+        };
 
-      for (const p of scene.placements) {
-        if (uncommittedMove.placementIds.has(p.id)) {
-          const original = uncommittedMove.originalPositions.get(p.id);
-          if (original) {
-            // This was a moved placement - restore original position
-            previousPlacements.push({ ...p, gridX: original.gridX, gridY: original.gridY });
+        // Restore placements to their original positions
+        const restoredPlacements = scene.placements.map(p => {
+          if (uncommittedMove.placementIds.has(p.id)) {
+            const original = uncommittedMove.originalPositions.get(p.id);
+            if (original) {
+              return { ...p, gridX: original.gridX, gridY: original.gridY };
+            }
           }
-          // If no original position, it was a new placement - don't include it
-        } else {
-          // Not part of uncommitted move - keep as is
-          previousPlacements.push({ ...p });
+          return p;
+        });
+
+        // Add back any replaced placements
+        for (const replaced of uncommittedMove.replacedPlacements) {
+          restoredPlacements.push({ ...replaced });
         }
-      }
 
-      // Add back replaced placements
-      for (const replaced of uncommittedMove.replacedPlacements) {
-        previousPlacements.push({ ...replaced });
-      }
+        // Keep tiles selected and uncommitted (but now with empty originalPositions
+        // since they're back at their "initial" uncommitted position)
+        set({
+          project: {
+            ...project,
+            scenes: project.scenes.map(s =>
+              s.id === scene.id
+                ? { ...s, placements: restoredPlacements }
+                : s
+            ),
+          },
+          // Keep uncommitted but clear originalPositions (they're at initial position now)
+          uncommittedMove: {
+            placementIds: uncommittedMove.placementIds,
+            replacedPlacements: [], // No longer covering anything
+            originalPositions: new Map(), // Back to initial position
+          },
+          history: {
+            past: history.past,
+            future: [currentEntry, ...history.future],
+          },
+          // Keep selection
+          selection: get().selection,
+        });
+        return;
+      } else {
+        // This was purely new placements (like duplicate) with no subsequent moves
+        // Cancel it completely - remove the placements
+        const currentEntry: HistoryEntry = {
+          sceneId: scene.id,
+          placements: scene.placements.map(p => ({ ...p })),
+          description: 'uncommitted move',
+          uncommittedMove: {
+            placementIds: new Set(uncommittedMove.placementIds),
+            replacedPlacements: uncommittedMove.replacedPlacements.map(p => ({ ...p })),
+            originalPositions: new Map(uncommittedMove.originalPositions),
+          },
+        };
 
-      set({
-        project: {
-          ...project,
-          scenes: project.scenes.map(s =>
-            s.id === scene.id
-              ? { ...s, placements: previousPlacements }
-              : s
-          ),
-        },
-        uncommittedMove: null,
-        history: {
-          past: history.past,
-          future: [currentEntry, ...history.future],
-        },
-        selection: {
-          ...get().selection,
-          tileIds: new Set(),
-        },
-      });
-      return;
+        // Remove uncommitted placements entirely
+        const previousPlacements = scene.placements.filter(
+          p => !uncommittedMove.placementIds.has(p.id)
+        );
+
+        // Add back replaced placements
+        for (const replaced of uncommittedMove.replacedPlacements) {
+          previousPlacements.push({ ...replaced });
+        }
+
+        set({
+          project: {
+            ...project,
+            scenes: project.scenes.map(s =>
+              s.id === scene.id
+                ? { ...s, placements: previousPlacements }
+                : s
+            ),
+          },
+          uncommittedMove: null,
+          history: {
+            past: history.past,
+            future: [currentEntry, ...history.future],
+          },
+          selection: {
+            ...get().selection,
+            tileIds: new Set(),
+          },
+        });
+        return;
+      }
     }
 
     if (history.past.length === 0) return;

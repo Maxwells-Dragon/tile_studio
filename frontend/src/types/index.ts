@@ -48,8 +48,8 @@ export interface Scene {
   /** Grid dimensions */
   gridWidth: number;
   gridHeight: number;
-  /** Tile size in pixels */
-  tileSize: number;
+  /** @deprecated Tile size is now at project level. Kept for backward compatibility. */
+  tileSize?: number;
   /** All placed tiles */
   placements: TilePlacement[];
   /** All edges with lock states */
@@ -70,8 +70,8 @@ export interface Project {
   activeSceneId: string | null;
   /** Global keyword bank */
   keywords: string[];
-  /** Default tile size for new scenes */
-  defaultTileSize: number;
+  /** Tile size in pixels for all scenes */
+  tileSize: number;
 }
 
 /** Selection state */
